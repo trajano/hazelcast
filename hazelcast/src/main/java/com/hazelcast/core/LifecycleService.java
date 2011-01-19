@@ -37,4 +37,3 @@ public interface LifecycleService {
 
     boolean isRunning();
 }
-
