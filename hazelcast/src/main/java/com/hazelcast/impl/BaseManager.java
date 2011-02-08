@@ -457,6 +457,7 @@ public abstract class BaseManager {
 
         public void beforeRedo() {
             node.checkNodeState();
+            request.beforeRedo();
         }
 
         public Object getResult(long time, TimeUnit unit) throws InterruptedException {
