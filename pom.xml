@@ -3,11 +3,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
                       http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
+    <description>Hazelcast In-Memory DataGrid</description>
     <groupId>com.hazelcast</groupId>
     <artifactId>hazelcast-root</artifactId>
     <packaging>pom</packaging>
-    <version>1.9.2</version>
+    <version>1.9.2.1</version>
     <name>Hazelcast Root</name>
 
     <modules>
@@ -26,6 +26,30 @@
         <target.dir>target</target.dir>
     </properties>
     <url>http://www.hazelcast.com/</url>
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <scm>
+        <connection>scm:svn:http://hazelcast.googlecode.com/svn/trunk/</connection>
+        <developerConnection>scm:svn:https://hazelcast.googlecode.com/svn/trunk/</developerConnection>
+        <url>http://hazelcast.googlecode.com/svn/trunk/</url>
+    </scm>
+    <developers>
+        <developer>
+            <id>oztalip</id>
+            <name>talip ozturk</name>
+            <email>talip@hazelcast.com</email>
+        </developer>
+        <developer>
+            <id>fuad</id>
+            <name>fuad malikov</name>
+            <email>fuad@hazelcast.com</email>
+        </developer>
+    </developers>
     <issueManagement>
         <system>Google Code</system>
         <url>http://code.google.com/p/hazelcast/issues</url>
@@ -122,13 +146,52 @@
                     <xmlOutput>true</xmlOutput>
                 </configuration>
             </plugin>
+
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <configuration>
+                            <excludePackageNames>com.hazelcast.impl.*:com.hazelcast.nio.*</excludePackageNames>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 
     <distributionManagement>
         <repository>
             <id>release-repository</id>
-            <url>https://oss.sonatype.org/content/repositories/releases</url>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
         </repository>
         <snapshotRepository>
             <id>snapshot-repository</id>
