@@ -440,14 +440,9 @@ public class CMap {
                     markAsEvicted(record);
                 } else {
                     if (record.containsValue(req.value)) {
-                        if (record.getMultiValues() != null) {
-                            Iterator<Data> itValues = record.getMultiValues().iterator();
-                            while (itValues.hasNext()) {
-                                Data value = itValues.next();
-                                if (req.value.equals(value)) {
-                                    itValues.remove();
-                                }
-                            }
+                        Set<Data> multiValues = record.getMultiValues();
+                        if (multiValues != null) {
+                            multiValues.remove(req.value);
                         }
                     }
                     if (record.valueCount() == 0) {
