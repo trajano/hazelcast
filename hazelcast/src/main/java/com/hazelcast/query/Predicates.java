@@ -451,10 +451,9 @@ public final class Predicates {
             if (firstValue == null) return value;
             if (firstValue.getClass() == value.getClass()) {
                 return value;
-            } else if (value instanceof String) {
-                String str = (String) value;
-                return getRealObject(firstValue, str);
-            } else throw new RuntimeException("Cannot get real object " + value);
+            } else {
+                return getRealObject(firstValue, String.valueOf(value));
+            }
         }
 
         protected boolean doApply(Object first, Object second) {
