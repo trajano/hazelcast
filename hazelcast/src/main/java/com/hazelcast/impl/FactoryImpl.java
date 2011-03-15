@@ -75,7 +75,7 @@ public class FactoryImpl implements HazelcastInstance {
 
     private final TopicProxyImpl memberStatsTopicProxy;
 
-    private final MultiMapProxy memberStatsMultimapProxy;
+    private final MultiMapProxyImpl memberStatsMultimapProxyImpl;
 
     private final ConcurrentMap<String, ExecutorServiceProxy> executorServiceProxies = new ConcurrentHashMap<String, ExecutorServiceProxy>(2);
 
@@ -307,11 +307,11 @@ public class FactoryImpl implements HazelcastInstance {
         hazelcastInstanceProxy = new HazelcastInstanceProxy(this);
         locksMapProxy = new MProxyImpl(Prefix.MAP + "__hz_Locks", this);
         idGeneratorMapProxy = new MProxyImpl(Prefix.MAP + "__hz_IdGenerator", this);
-        memberStatsMultimapProxy = new MultiMapProxy(Prefix.MULTIMAP + MemberStatePublisher.STATS_MULTIMAP_NAME, this);
+        memberStatsMultimapProxyImpl = new MultiMapProxyImpl(Prefix.MULTIMAP + MemberStatePublisher.STATS_MULTIMAP_NAME, this);
         memberStatsTopicProxy = new TopicProxyImpl(Prefix.TOPIC + MemberStatePublisher.STATS_TOPIC_NAME, this);
         lifecycleService.fireLifecycleEvent(STARTING);
         node.start();
-        memberStatePublisher = new MemberStatePublisher(memberStatsTopicProxy, memberStatsMultimapProxy, node);
+        memberStatePublisher = new MemberStatePublisher(memberStatsTopicProxy, memberStatsMultimapProxyImpl, node);
         globalProxies.addEntryListener(new EntryListener() {
             public void entryAdded(EntryEvent event) {
                 if (node.localMember.equals(event.getMember())) {
@@ -579,7 +579,7 @@ public class FactoryImpl implements HazelcastInstance {
                 proxy = new MProxyImpl(name, this);
             } else if (name.startsWith(Prefix.MAP_BASED)) {
                 if (BaseManager.getInstanceType(name) == Instance.InstanceType.MULTIMAP) {
-                    proxy = new MultiMapProxy(name, this);
+                    proxy = new MultiMapProxyImpl(name, this);
                 } else {
                     proxy = new CollectionProxyImpl(name, this);
                 }
@@ -1558,28 +1558,33 @@ public class FactoryImpl implements HazelcastInstance {
         }
     }
 
-    public static class MultiMapProxy extends FactoryAwareNamedProxy implements MultiMap, DataSerializable, IGetAwareProxy {
+    public static class MultiMapProxyImpl extends FactoryAwareNamedProxy implements MultiMapProxy, DataSerializable, IGetAwareProxy {
 
-        private transient MultiMap base = null;
+        private transient MultiMapProxy base = null;
 
-        public MultiMapProxy() {
+        public MultiMapProxyImpl() {
         }
 
-        public MultiMapProxy(String name, FactoryImpl factory) {
+        public MultiMapProxyImpl(String name, FactoryImpl factory) {
             setName(name);
             setHazelcastInstance(factory);
-            this.base = new MultiMapBase();
+            this.base = new MultiMapReal();
         }
 
         private void ensure() {
             factory.initialChecks();
             if (base == null) {
-                base = (MultiMap) factory.getOrCreateProxyByName(name);
+                base = (MultiMapProxy) factory.getOrCreateProxyByName(name);
             }
         }
 
-        public MultiMapBase getBase() {
-            return (MultiMapBase) base;
+        public MProxy getMProxy() {
+            ensure();
+            return base.getMProxy();
+        }
+
+        public MultiMapReal getBase() {
+            return (MultiMapReal) base;
         }
 
         public Object getId() {
@@ -1596,7 +1601,7 @@ public class FactoryImpl implements HazelcastInstance {
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            MultiMapProxy that = (MultiMapProxy) o;
+            MultiMapProxyImpl that = (MultiMapProxyImpl) o;
             return !(name != null ? !name.equals(that.name) : that.name != null);
         }
 
@@ -1743,11 +1748,15 @@ public class FactoryImpl implements HazelcastInstance {
             base.unlockMap();
         }
 
-        class MultiMapBase implements MultiMap, IGetAwareProxy {
+        class MultiMapReal implements MultiMapProxy, IGetAwareProxy {
             final MProxy mapProxy;
 
-            private MultiMapBase() {
+            private MultiMapReal() {
                 mapProxy = new MProxyImpl(name, factory);
+            }
+
+            public MProxy getMProxy() {
+                return mapProxy;
             }
 
             public String getName() {

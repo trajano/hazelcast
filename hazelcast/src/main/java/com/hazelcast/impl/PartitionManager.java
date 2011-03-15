@@ -169,7 +169,7 @@ public class PartitionManager implements Runnable {
         for (final Entry<Address, List<Block>> entry : addressBlocks.entrySet()) {
             final Address address = entry.getKey();
             List<Block> blocks = entry.getValue();
-            int diff = (aveBlockOwnCount - blocks.size());
+            int diff = (aveBlockOwnCount - blocks.size() + PARTITION_COUNT) % PARTITION_COUNT;
             for (int i = 0; i < diff && lsEmptyBlocks.size() > 0; i++) {
                 Block block = lsEmptyBlocks.remove(0);
                 block.setOwner(address);
