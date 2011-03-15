@@ -26,10 +26,8 @@ import com.hazelcast.query.Predicate;
 import java.io.Serializable;
 import java.util.Collection;
 import java.util.EventListener;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 
@@ -178,7 +176,7 @@ public class ProxyHelper {
         return prepareRequest(operation, key, value, 0, null);
     }
 
-    protected Object getValue(Packet response) {
+    static Object getValue(Packet response) {
         if (response.getValue() != null) {
             return toObject(response.getValue());
         }
