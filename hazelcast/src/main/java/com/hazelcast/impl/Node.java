@@ -560,7 +560,7 @@ public class Node {
             try {
                 config.checkCompatibility(joinRequest.config);
             } catch (Exception e) {
-                logger.log(Level.INFO, "Invalid join request, reason:" + e.getMessage());
+                logger.log(Level.FINEST, "Invalid join request, reason: " + e.getMessage());
                 throw e;
             }
         }

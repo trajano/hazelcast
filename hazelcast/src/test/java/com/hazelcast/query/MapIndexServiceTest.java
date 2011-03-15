@@ -22,7 +22,10 @@ import com.hazelcast.core.MapEntry;
 import com.hazelcast.impl.CMap;
 import com.hazelcast.impl.Record;
 import com.hazelcast.impl.TestUtil;
-import org.junit.*;
+import org.junit.After;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import org.junit.runner.RunWith;
 
 import java.util.HashSet;
@@ -31,7 +34,6 @@ import java.util.Set;
 
 import static org.junit.Assert.*;
 
-@Ignore
 @RunWith(com.hazelcast.util.RandomBlockJUnit4ClassRunner.class)
 public class MapIndexServiceTest extends TestUtil {
 
@@ -46,7 +48,6 @@ public class MapIndexServiceTest extends TestUtil {
         Hazelcast.shutdownAll();
     }
 
-    @Ignore
     @Test
     public void testAndWithSingleEntry() throws Exception {
         CMap cmap = mockCMap("default");
@@ -82,14 +83,13 @@ public class MapIndexServiceTest extends TestUtil {
         System.out.println("Used Memory:" + ((total - free) / 1024 / 1024));
         for (int i = 0; i < 10000; i++) {
             long start = System.currentTimeMillis();
-            QueryContext queryContext = new QueryContext("default", predicate);
+            QueryContext queryContext = new QueryContext("default", predicate, mapIndexService);
             Set<MapEntry> results = mapIndexService.doQuery(queryContext);
 //            System.out.println("result size " + results.size() + " took " + (System.currentTimeMillis() - start));
             assertEquals(1, results.size());
         }
     }
 
-    @Ignore
     @Test
     public void testIndex() throws Exception {
         CMap cmap = mockCMap("default");
@@ -118,7 +118,7 @@ public class MapIndexServiceTest extends TestUtil {
         System.out.println("Used Memory:" + ((total - free) / 1024 / 1024));
         for (int i = 0; i < 10000; i++) {
             long start = System.currentTimeMillis();
-            QueryContext queryContext = new QueryContext("default", new SqlPredicate("salary=161 and age >20 and age <23"));
+            QueryContext queryContext = new QueryContext("default", new SqlPredicate("salary=161 and age >20 and age <23"), mapIndexService);
             Set<MapEntry> results = mapIndexService.doQuery(queryContext);
 //            for (MapEntry result : results) {
 //                System.out.println(((Record)result).getRecordEntry().getValue());

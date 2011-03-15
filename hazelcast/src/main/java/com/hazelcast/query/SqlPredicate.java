@@ -1,12 +1,12 @@
-/* 
+/*
  * Copyright (c) 2008-2010, Hazel Ltd. All Rights Reserved.
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at 
- * 
+ * You may obtain a copy of the License at
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,7 +23,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.util.*;
-import java.util.Map.Entry;
 
 import static com.hazelcast.query.Predicates.*;
 
@@ -47,6 +46,10 @@ public class SqlPredicate extends AbstractPredicate implements IndexAwarePredica
         if (predicate instanceof IndexAwarePredicate) {
             return ((IndexAwarePredicate) predicate).collectIndexAwarePredicates(lsIndexPredicates, mapIndexes);
         }
+        return false;
+    }
+
+    public boolean isIndexed(QueryContext queryContext) {
         return false;
     }
 
@@ -179,13 +182,13 @@ public class SqlPredicate extends AbstractPredicate implements IndexAwarePredica
         }
         return (Predicate) tokens.get(0);
     }
-    
-    private Object toValue(final Object key, final Map<String, String> phrases){
+
+    private Object toValue(final Object key, final Map<String, String> phrases) {
         final String value = phrases.get(key);
         return value != null ? value : key;
     }
-    
-    private String[] toValue(final String[] keys, final Map<String, String> phrases){
+
+    private String[] toValue(final String[] keys, final Map<String, String> phrases) {
         for (int i = 0; i < keys.length; i++) {
             final String value = phrases.get(keys[i]);
             if (value != null) keys[i] = value;
