@@ -19,6 +19,10 @@ package com.hazelcast.nio;
 
 import com.hazelcast.impl.ThreadContext;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 
 public final class IOUtil {
