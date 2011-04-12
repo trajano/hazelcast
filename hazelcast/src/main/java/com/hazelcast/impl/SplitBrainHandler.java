@@ -88,6 +88,7 @@ public class SplitBrainHandler implements Runnable {
                 node.multicastService.removeMulticastListener(listener);
                 if (shouldMerge(joinInfo)) {
                     node.factory.restart();
+                    logger.log(Level.WARNING, node.address + " is merging [multicast] to " + joinInfo.address);
                     return;
                 }
             } catch (InterruptedException ignored) {
@@ -124,6 +125,7 @@ public class SplitBrainHandler implements Runnable {
                 if (conn != null) {
                     JoinInfo response = node.clusterManager.checkJoin(conn);
                     if (shouldMerge(response)) {
+                        logger.log(Level.WARNING, node.address + " is merging [tcp/ip] to " + possibleAddress);
                         // we will join so delay the merge checks.
                         lastRun = System.currentTimeMillis() + FIRST_RUN_DELAY_MILLIS;
                         node.factory.restart();
@@ -141,21 +143,32 @@ public class SplitBrainHandler implements Runnable {
         if (joinInfo != null) {
             boolean validJoinRequest;
             try {
-                validJoinRequest = node.validateJoinRequest(joinInfo);
-            } catch (Exception e) {
-                validJoinRequest = false;
-            }
-            if (validJoinRequest) {
-                int currentMemberCount = node.getClusterImpl().getMembers().size();
-                if (joinInfo.getMemberCount() > currentMemberCount) {
-                    // I should join the other cluster
-                    shouldMerge = true;
-                } else if (joinInfo.getMemberCount() == currentMemberCount) {
-                    // compare the hashes
-                    if (node.getThisAddress().hashCode() > joinInfo.address.hashCode()) {
+                try {
+                    validJoinRequest = node.validateJoinRequest(joinInfo);
+                } catch (Exception e) {
+                    validJoinRequest = false;
+                }
+                if (validJoinRequest) {
+                    for (Member member : node.getClusterImpl().getMembers()) {
+                        MemberImpl memberImpl = (MemberImpl) member;
+                        if (memberImpl.getAddress().equals(joinInfo.address)) {
+                            return false;
+                        }
+                    }
+                    int currentMemberCount = node.getClusterImpl().getMembers().size();
+                    if (joinInfo.getMemberCount() > currentMemberCount) {
+                        // I should join the other cluster
                         shouldMerge = true;
+                    } else if (joinInfo.getMemberCount() == currentMemberCount) {
+                        // compare the hashes
+                        if (node.getThisAddress().hashCode() > joinInfo.address.hashCode()) {
+                            shouldMerge = true;
+                        }
                     }
                 }
+            } catch (Throwable e) {
+                logger.log(Level.SEVERE, e.getMessage(), e);
+                return false;
             }
         }
         return shouldMerge;
