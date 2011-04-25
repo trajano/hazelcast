@@ -9,6 +9,8 @@
     <packaging>pom</packaging>
     <version>1.9.3-RC</version>
     <name>Hazelcast Root</name>
+    <description>Hazelcast In-Memory DataGrid</description>
+    <url>http://www.hazelcast.com/</url>
 
     <modules>
         <module>hazelcast</module>
