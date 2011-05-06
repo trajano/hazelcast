@@ -21,18 +21,15 @@ import com.hazelcast.core.*;
 import com.hazelcast.core.ExecutorServiceTest.BasicTestTask;
 import com.hazelcast.monitor.DistributedMapStatsCallable;
 import com.hazelcast.monitor.DistributedMemberInfoCallable;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static junit.framework.Assert.*;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 
 public class HazelcastClientExecutorServiceTest extends HazelcastClientTestBase {
 
@@ -226,9 +223,40 @@ public class HazelcastClientExecutorServiceTest extends HazelcastClientTestBase 
         result = task.get();
         assertNotNull(result);
     }
-//    @AfterClass
-//    public static void shutdownAll() {
-//        getHazelcastClient().shutdown();
-//        Hazelcast.shutdownAll();
-//    }
+
+   @Test
+    public void testClientCancel() throws Exception
+    {
+
+        Future<?> future = getExecutorService().submit(new SimpleTask());
+
+        Thread.sleep(5000);
+
+        assertTrue(future.cancel(true));
+        assertTrue(future.isCancelled());
+    }
+
+    static class SimpleTask implements Callable, Serializable
+{
+
+    public Object call()
+    {
+        System.out.println("*** Task has started...");
+
+        try
+        {
+            while (!Thread.currentThread().isInterrupted())
+            {
+                System.out.println("*** Task is running...");
+
+                Thread.sleep(1000);
+            }
+        }
+        catch (Exception e) {}
+
+        System.out.println("*** Task has finished...");
+
+        return null;
+    }
+}
 }

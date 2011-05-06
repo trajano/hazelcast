@@ -34,7 +34,6 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static com.hazelcast.impl.Constants.Objects.OBJECT_REDO;
 import static com.hazelcast.nio.IOUtil.toData;
 import static com.hazelcast.nio.IOUtil.toObject;
 
@@ -344,24 +343,6 @@ public class BlockingQueueManager extends BaseManager {
             }
         }
         return foundKeys;
-    }
-
-    public static class Integers implements DataSerializable {
-        final Set<Integer> integerSet = new HashSet<Integer>();
-
-        public void readData(DataInput in) throws IOException {
-            int count = in.readInt();
-            for (int i = 0; i < count; i++) {
-                integerSet.add(in.readInt());
-            }
-        }
-
-        public void writeData(DataOutput out) throws IOException {
-            out.writeInt(integerSet.size());
-            for (Integer integer : integerSet) {
-                out.writeInt(integer);
-            }
-        }
     }
 
     public static class GetValueKeysCallable implements Callable<Keys>, DataSerializable, HazelcastInstanceAware {
@@ -773,11 +754,11 @@ public class BlockingQueueManager extends BaseManager {
     }
 
     class BQ {
-        final List<ScheduledAction> offerWaitList = new ArrayList<ScheduledAction>(1000);
-        final List<ScheduledAction> pollWaitList = new ArrayList<ScheduledAction>(1000);
-        final List<Lease> leases = new ArrayList<Lease>(1000);
-        final Set<Data> keys = new HashSet<Data>(1000);
+        final LinkedList<ScheduledAction> offerWaitList = new LinkedList<ScheduledAction>();
+        final LinkedList<ScheduledAction> pollWaitList = new LinkedList<ScheduledAction>();
+        final LinkedList<Lease> leases = new LinkedList<Lease>();
         final LinkedList<QData> queue = new LinkedList<QData>();
+        final Set<Data> keys = new HashSet<Data>(1000);
         final int maxSizePerJVM;
         final long ttl;
         final String name;
@@ -822,16 +803,6 @@ public class BlockingQueueManager extends BaseManager {
             req.response = nextKey++;
         }
 
-        void offerKey(Request req) {
-            if (size() > maxSize()) {
-                req.response = OBJECT_REDO;
-            } else {
-                leases.add(new Lease(req.caller));
-                req.response = Boolean.TRUE;
-            }
-            returnResponse(req);
-        }
-
         void doSet(Request req) {
             int index = (int) req.longValue;
             Data key = req.key;
@@ -858,10 +829,10 @@ public class BlockingQueueManager extends BaseManager {
         void doAddKey(Data key, int index) {
             if (keys.add(key)) {
                 if (leases.size() > 0) {
-                    leases.remove(0);
+                    leases.removeFirst();
                 }
                 if (index == Integer.MAX_VALUE || index >= queue.size()) {
-                    queue.offer(new QData(key));
+                    queue.add(new QData(key));
                 } else if (index == 0) {
                     queue.addFirst(new QData(key));
                 } else {
@@ -891,9 +862,10 @@ public class BlockingQueueManager extends BaseManager {
 
         void takeOne() {
             while (pollWaitList.size() > 0) {
-                ScheduledAction scheduledActionPoll = pollWaitList.remove(0);
+                ScheduledAction scheduledActionPoll = pollWaitList.removeFirst();
                 if (!scheduledActionPoll.expired() && scheduledActionPoll.isValid()) {
                     scheduledActionPoll.consume();
+                    node.clusterManager.deregisterScheduledAction(scheduledActionPoll);
                     return;
                 }
             }
@@ -901,9 +873,10 @@ public class BlockingQueueManager extends BaseManager {
 
         void offerOne() {
             while (offerWaitList.size() > 0) {
-                ScheduledAction scheduledActionOffer = offerWaitList.remove(0);
+                ScheduledAction scheduledActionOffer = offerWaitList.removeFirst();
                 if (!scheduledActionOffer.expired() && scheduledActionOffer.isValid()) {
                     scheduledActionOffer.consume();
+                    node.clusterManager.deregisterScheduledAction(scheduledActionOffer);
                     return;
                 }
             }

@@ -69,37 +69,37 @@ public class FactoryImpl implements HazelcastInstance {
 
     private static int nextFactoryId = 0;
 
-    private final ConcurrentMap<String, HazelcastInstanceAwareInstance> proxiesByName = new ConcurrentHashMap<String, HazelcastInstanceAwareInstance>(1000);
+    final ConcurrentMap<String, HazelcastInstanceAwareInstance> proxiesByName = new ConcurrentHashMap<String, HazelcastInstanceAwareInstance>(1000);
 
-    private final ConcurrentMap<ProxyKey, HazelcastInstanceAwareInstance> proxies = new ConcurrentHashMap<ProxyKey, HazelcastInstanceAwareInstance>(1000);
+    final ConcurrentMap<ProxyKey, HazelcastInstanceAwareInstance> proxies = new ConcurrentHashMap<ProxyKey, HazelcastInstanceAwareInstance>(1000);
 
-    private final MProxy locksMapProxy;
+    final MProxy locksMapProxy;
 
-    private final MProxy idGeneratorMapProxy;
+    final MProxy idGeneratorMapProxy;
 
-    private final MProxy globalProxies;
+    final MProxy globalProxies;
 
-    private final ConcurrentMap<String, ExecutorServiceProxy> executorServiceProxies = new ConcurrentHashMap<String, ExecutorServiceProxy>(2);
+    final ConcurrentMap<String, ExecutorServiceProxy> executorServiceProxies = new ConcurrentHashMap<String, ExecutorServiceProxy>(2);
 
-    private final CopyOnWriteArrayList<InstanceListener> lsInstanceListeners = new CopyOnWriteArrayList<InstanceListener>();
+    final CopyOnWriteArrayList<InstanceListener> lsInstanceListeners = new CopyOnWriteArrayList<InstanceListener>();
 
-    private final String name;
+    final String name;
 
-    private final TransactionFactory transactionFactory;
+    final TransactionFactory transactionFactory;
 
-    private final HazelcastInstanceProxy hazelcastInstanceProxy;
+    final HazelcastInstanceProxy hazelcastInstanceProxy;
 
-    public final Node node;
+    final ManagementService managementService;
 
-    volatile boolean restarted = false;
-
-    private final ManagementService managementService;
-
-    private final ILogger logger;
+    final ILogger logger;
 
     final LifecycleServiceImpl lifecycleService;
 
     final ManagementCenterService managementCenterService;
+
+    public final Node node;
+
+    volatile boolean restarted = false;
 
     public static HazelcastInstanceProxy newHazelcastInstanceProxy(Config config) {
         FactoryImpl factory = null;
@@ -1699,6 +1699,7 @@ public class FactoryImpl implements HazelcastInstance {
             public void destroy() {
                 operationsCounter.incrementOtherOperations();
                 factory.destroyInstanceClusterWide(name, null);
+                factory.destroyInstanceClusterWide(Prefix.MAP + name, null);
             }
 
             public Instance.InstanceType getInstanceType() {
@@ -1773,11 +1774,7 @@ public class FactoryImpl implements HazelcastInstance {
         }
 
         public void destroy() {
-            Instance instance = factory.proxies.remove(new ProxyKey(name, null));
-            if (instance != null) {
-                ensure();
-                base.destroy();
-            }
+            factory.destroyInstanceClusterWide(name, null);
         }
 
         public String getName() {
@@ -2681,17 +2678,21 @@ public class FactoryImpl implements HazelcastInstance {
             }
 
             public Object remove(Object key) {
+                long begin = System.currentTimeMillis();
                 check(key);
-                mapOperationCounter.incrementRemoves();
                 MRemove mremove = ThreadContext.get().getCallCache(factory).getMRemove();
-                return mremove.remove(name, key, -1);
+                Object result = mremove.remove(name, key, -1);
+                mapOperationCounter.incrementRemoves(System.currentTimeMillis() - begin);
+                return result;
             }
 
             public Object tryRemove(Object key, long timeout, TimeUnit timeunit) throws TimeoutException {
+                long begin = System.currentTimeMillis();
                 check(key);
-                mapOperationCounter.incrementRemoves();
                 MRemove mremove = ThreadContext.get().getCallCache(factory).getMRemove();
-                return mremove.tryRemove(name, key, toMillis(timeout, timeunit));
+                Object result = mremove.tryRemove(name, key, toMillis(timeout, timeunit));
+                mapOperationCounter.incrementRemoves(System.currentTimeMillis() - begin);
+                return result;
             }
 
             public int size() {
@@ -2716,11 +2717,13 @@ public class FactoryImpl implements HazelcastInstance {
             }
 
             public boolean remove(Object key, Object value) {
+                long begin = System.currentTimeMillis();
                 check(key);
                 check(value);
-                mapOperationCounter.incrementRemoves();
                 MRemove mremove = concurrentMapManager.new MRemove();
-                return (mremove.removeIfSame(name, key, value, -1) != null);
+                boolean result = (mremove.removeIfSame(name, key, value, -1) != null);
+                mapOperationCounter.incrementRemoves(System.currentTimeMillis() - begin);
+                return result;
             }
 
             public Object replace(Object key, Object value) {
@@ -2913,10 +2916,12 @@ public class FactoryImpl implements HazelcastInstance {
             }
 
             public boolean removeKey(Object key) {
+                long begin = System.currentTimeMillis();
                 check(key);
-                mapOperationCounter.incrementRemoves();
                 MRemoveItem mRemoveItem = concurrentMapManager.new MRemoveItem();
-                return mRemoveItem.removeItem(name, key);
+                boolean result = mRemoveItem.removeItem(name, key);
+                mapOperationCounter.incrementRemoves(System.currentTimeMillis() - begin);
+                return result;
             }
 
             public void clear() {
@@ -3064,7 +3069,7 @@ public class FactoryImpl implements HazelcastInstance {
             public long newId() {
                 long idAddition = currentId.incrementAndGet();
                 if (idAddition >= MILLION) {
-                    synchronized (this) {
+                    synchronized (IdGeneratorBase.this) {
                         try {
                             idAddition = currentId.get();
                             if (idAddition >= MILLION) {
@@ -3084,14 +3089,7 @@ public class FactoryImpl implements HazelcastInstance {
             }
 
             private Long getNewMillion() {
-                try {
-                    DistributedTask<Long> task = new DistributedTask<Long>(new IncrementTask(name, factory), name);
-                    factory.getExecutorService("default").execute(task);
-                    return task.get();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                return null;
+                return factory.getAtomicNumber("__idGen" + name).incrementAndGet() - 1;
             }
 
             public InstanceType getInstanceType() {
@@ -3099,58 +3097,18 @@ public class FactoryImpl implements HazelcastInstance {
             }
 
             public void destroy() {
-                factory.destroyInstanceClusterWide(name, null);
+                currentId.set(2 * MILLION);
+                synchronized (IdGeneratorBase.this) {
+                    factory.destroyInstanceClusterWide(name, null);
+                    factory.getAtomicNumber("__idGen" + name).destroy();
+                    currentId.set(2 * MILLION);
+                    million.set(-1);
+                }
             }
 
             public Object getId() {
                 return name;
             }
-        }
-    }
-
-    public static class IncrementTask implements Callable<Long>, DataSerializable, HazelcastInstanceAware {
-        String name = null;
-        transient HazelcastInstance hazelcastInstance = null;
-
-        public IncrementTask() {
-            super();
-        }
-
-        public IncrementTask(String uuidName, HazelcastInstance hazelcastInstance) {
-            super();
-            this.name = uuidName;
-            this.hazelcastInstance = hazelcastInstance;
-        }
-
-        public Long call() {
-            MProxy map = ((FactoryImpl) hazelcastInstance).idGeneratorMapProxy;
-            map.lock(name);
-            try {
-                Long max = (Long) map.get(name);
-                if (max == null) {
-                    max = 0L;
-                    map.put(name, 0L);
-                    return max;
-                } else {
-                    Long newMax = max + 1;
-                    map.put(name, newMax);
-                    return newMax;
-                }
-            } finally {
-                map.unlock(name);
-            }
-        }
-
-        public void writeData(DataOutput out) throws IOException {
-            out.writeUTF(name);
-        }
-
-        public void readData(DataInput in) throws IOException {
-            this.name = in.readUTF();
-        }
-
-        public void setHazelcastInstance(HazelcastInstance hazelcastInstance) {
-            this.hazelcastInstance = hazelcastInstance;
         }
     }
 }

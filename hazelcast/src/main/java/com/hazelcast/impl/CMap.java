@@ -112,7 +112,7 @@ public class CMap {
 
     final MapIndexService mapIndexService;
 
-    final MapNearCache mapNearCache;
+    final NearCache nearCache;
 
     final long creationTime;
 
@@ -223,19 +223,19 @@ public class CMap {
         store = (mapStoreWrapper == null || !mapStoreWrapper.isMapStore()) ? null : mapStoreWrapper;
         NearCacheConfig nearCacheConfig = mapConfig.getNearCacheConfig();
         if (nearCacheConfig == null) {
-            mapNearCache = null;
+            nearCache = null;
         } else {
-            MapNearCache mapNearCache = new MapNearCache(this,
+            NearCache nearCache = new NearCache(this,
                     SortedHashMap.getOrderingTypeByName(nearCacheConfig.getEvictionPolicy()),
                     nearCacheConfig.getMaxSize(),
                     nearCacheConfig.getTimeToLiveSeconds() * 1000L,
                     nearCacheConfig.getMaxIdleSeconds() * 1000L,
                     nearCacheConfig.isInvalidateOnChange());
-            final MapNearCache anotherMapNearCache = concurrentMapManager.mapCaches.putIfAbsent(name, mapNearCache);
-            if (anotherMapNearCache != null) {
-                mapNearCache = anotherMapNearCache;
+            final NearCache anotherNearCache = concurrentMapManager.mapCaches.putIfAbsent(name, nearCache);
+            if (anotherNearCache != null) {
+                nearCache = anotherNearCache;
             }
-            this.mapNearCache = mapNearCache;
+            this.nearCache = nearCache;
         }
         MergePolicy mergePolicyTemp = null;
         String mergePolicyName = mapConfig.getMergePolicy();
@@ -266,9 +266,14 @@ public class CMap {
     }
 
     final boolean isNotLocked(Request request) {
-        return (lockEntireMap == null
+        boolean result = (lockEntireMap == null
                 || !lockEntireMap.isLocked()
                 || lockEntireMap.isLockedBy(request.lockAddress, request.lockThreadId));
+        if (!result) {
+            System.out.println(thisAddress + " and caller is " + request.caller);
+            System.out.println(lockEntireMap + " LOCKED !! " + request.operation);
+        }
+        return result;
     }
 
     final boolean overCapacity(Request request) {
@@ -293,7 +298,9 @@ public class CMap {
             if (lockEntireMap == null) {
                 lockEntireMap = new DistributedLock();
             }
-            lockEntireMap.lock(request.lockAddress, request.lockThreadId);
+            if (!lockEntireMap.isLockedBy(request.lockAddress, request.lockThreadId)) {
+                lockEntireMap.lock(request.lockAddress, request.lockThreadId);
+            }
             request.clearForResponse();
             request.response = Boolean.TRUE;
         } else if (request.operation == CONCURRENT_MAP_UNLOCK_MAP) {
@@ -405,8 +412,6 @@ public class CMap {
                 Request reqCopy = req.hardCopy();
                 record.addBackupOp(new VersionedBackupOp(this, reqCopy));
                 return true;
-            } else if (req.version <= record.getVersion()) {
-                return false;
             }
         }
         doBackup(req);
@@ -739,6 +744,15 @@ public class CMap {
         }
     }
 
+    public void onDisconnect(Address deadAddress) {
+        if (deadAddress == null) return;
+        if (lockEntireMap != null) {
+            if (deadAddress.equals(lockEntireMap.getLockAddress())) {
+                lockEntireMap = null;
+            }
+        }
+    }
+
     public void onDisconnect(Record record, Address deadAddress) {
         if (record == null || deadAddress == null) return;
         List<ScheduledAction> lsScheduledActions = record.getScheduledActions();
@@ -825,6 +839,8 @@ public class CMap {
         if (record == null) {
             record = createNewRecord(req.key, toData(0L));
             mapRecords.put(req.key, record);
+        } else if (record.getValue() == null) {
+            record.setValue(toData(0L));
         }
         if (req.operation == ATOMIC_NUMBER_GET_AND_SET) {
             req.response = record.getValueData();
@@ -1251,8 +1267,8 @@ public class CMap {
 
     void startCleanup(boolean forced) {
         final long now = System.currentTimeMillis();
-        if (mapNearCache != null) {
-            mapNearCache.evict(now, false);
+        if (nearCache != null) {
+            nearCache.evict(now, false);
         }
         final Set<Record> recordsDirty = new HashSet<Record>();
         final Set<Record> recordsUnknown = new HashSet<Record>();
@@ -1370,7 +1386,7 @@ public class CMap {
     }
 
     void fireInvalidation(Record record) {
-        if (mapNearCache != null && mapNearCache.shouldInvalidateOnChange()) {
+        if (nearCache != null && nearCache.shouldInvalidateOnChange()) {
             for (MemberImpl member : concurrentMapManager.lsMembers) {
                 if (!member.localMember()) {
                     if (member.getAddress() != null) {
@@ -1385,7 +1401,7 @@ public class CMap {
                     }
                 }
             }
-            mapNearCache.invalidate(record.getKeyData());
+            nearCache.invalidate(record.getKeyData());
         }
     }
 
@@ -1523,8 +1539,8 @@ public class CMap {
                 }
             }
         }
-        if (mapNearCache != null) {
-            mapNearCache.reset();
+        if (nearCache != null) {
+            nearCache.reset();
         }
         mapRecords.clear();
         mapIndexService.clear();
@@ -1632,8 +1648,8 @@ public class CMap {
         sbState.append(name);
         sbState.append("] r:");
         sbState.append(mapRecords.size());
-        if (mapNearCache != null) {
-            mapNearCache.appendState(sbState);
+        if (nearCache != null) {
+            nearCache.appendState(sbState);
         }
         mapIndexService.appendState(sbState);
         for (Record record : mapRecords.values()) {
