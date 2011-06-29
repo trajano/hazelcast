@@ -858,6 +858,7 @@ public class CMap {
             }
             req.value = null;
         }
+        req.version = record.getVersion();
     }
 
     public void doSemaphore(Request request) {
@@ -924,6 +925,7 @@ public class CMap {
             }
         } else if (req.operation == CONCURRENT_MAP_REPLACE_IF_NOT_NULL) {
             if (record == null || !record.isActive() || !record.isValid(now) || record.getValueData() == null) {
+                req.value = null;
                 return;
             }
         } else if (req.operation == CONCURRENT_MAP_REPLACE_IF_SAME) {
