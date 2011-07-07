@@ -86,7 +86,6 @@ public class SplitBrainHandler implements Runnable {
             try {
                 JoinInfo joinInfo = (JoinInfo) q.poll(3, TimeUnit.SECONDS);
                 if (joinInfo != null) {
-                    node.multicastService.removeMulticastListener(listener);
                     if (shouldMerge(joinInfo)) {
                         logger.log(Level.WARNING, node.address + " is merging [multicast] to " + joinInfo.address);
                         node.factory.restart();
@@ -96,6 +95,8 @@ public class SplitBrainHandler implements Runnable {
             } catch (InterruptedException ignored) {
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                node.multicastService.removeMulticastListener(listener);
             }
         }
         if (tcpEnabled) {
