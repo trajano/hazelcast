@@ -17,26 +17,19 @@
 
 package com.hazelcast.impl;
 
-import com.hazelcast.logging.ILogger;
-
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.logging.Level;
 
 public class ExecutorThreadFactory implements ThreadFactory {
-    final ILogger logger;
     final ThreadGroup group;
     final AtomicInteger threadNumber = new AtomicInteger(1);
     final String namePrefix;
     final ClassLoader classLoader;
-    final Node node;
 
-    public ExecutorThreadFactory(Node node, String threadNamePrefix, ClassLoader classLoader) {
-        this.node = node;
-        this.group = node.threadGroup;
+    public ExecutorThreadFactory(ThreadGroup threadGroup, String threadNamePrefix, ClassLoader classLoader) {
+        this.group = threadGroup;
         this.classLoader = classLoader;
         this.namePrefix = threadNamePrefix;
-        this.logger = node.getLogger(ExecutorThreadFactory.class.getName());
     }
 
     public Thread newThread(Runnable r) {
@@ -47,14 +40,6 @@ public class ExecutorThreadFactory implements ThreadFactory {
         }
         if (t.getPriority() != Thread.NORM_PRIORITY) {
             t.setPriority(Thread.NORM_PRIORITY);
-        }
-        if (true) {
-            try {
-                throw new RuntimeException("New Thread " + t);
-            } catch (RuntimeException e1) {
-                e1.printStackTrace();
-                logger.log(Level.WARNING, "Hazelcast Created a New Thread", e1);
-            }
         }
         return t;
     }
