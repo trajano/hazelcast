@@ -522,7 +522,7 @@ public class CMap {
      */
     private boolean backupOneValue(Request req) {
         Record record = getRecord(req);
-        if (record != null && record.isActive() && req.version < record.getVersion()) {
+        if (record != null /* && record.isActive() */ && req.version < record.getVersion()) {
             return false;
         }
         doBackup(req);
@@ -562,8 +562,13 @@ public class CMap {
         if (req.key == null || req.key.size() == 0) {
             throw new RuntimeException("Backup key size cannot be zero! " + req.key);
         }
-        if (req.operation == CONCURRENT_MAP_BACKUP_PUT) {
+        if (req.operation == CONCURRENT_MAP_BACKUP_PUT
+                || req.operation == CONCURRENT_MAP_BACKUP_PUT_AND_UNLOCK) {
             Record record = toRecord(req);
+            if (req.operation == CONCURRENT_MAP_BACKUP_PUT_AND_UNLOCK
+                    || req.txnId != -1) {
+                unlock(record, req);
+            }
             markAsActive(record);
             record.setVersion(req.version);
             if (req.indexes != null) {
@@ -580,33 +585,35 @@ public class CMap {
                 ttlPerRecord = true;
             }
         } else if (req.operation == CONCURRENT_MAP_BACKUP_REMOVE) {
-            Record record = getRecord(req);
-            if (record != null) {
-                if (record.isActive()) {
-                    markAsEvicted(record);
-                }
+            Record record = toRecord(req);
+            if (record.isActive()) {
+                markAsEvicted(record);
             }
+            if (req.txnId != -1) {
+                unlock(record, req);
+            }
+            record.setVersion(req.version);
         } else if (req.operation == CONCURRENT_MAP_BACKUP_LOCK) {
             if (req.lockCount == 0) {
                 //UNLOCK operation
-                Record rec = getRecord(req);
-                if (rec != null) {
-                    rec.setLock(null);
-                    if (rec.valueCount() == 0) {
-                        markAsEvicted(rec);
+                Record record = getRecord(req);
+                if (record != null) {
+                    record.clearLock();
+                    if (record.valueCount() == 0) {
+                        markAsEvicted(record);
                     }
                 }
             } else {
                 // LOCK operation
-                Record rec = toRecord(req);
-                if (rec.getVersion() == 0) {
-                    rec.setVersion(req.version);
+                Record record = toRecord(req);
+                if (record.getVersion() == 0) {
+                    record.setVersion(req.version);
                 }
             }
         } else if (req.operation == CONCURRENT_MAP_BACKUP_ADD) {
             add(req, true);
         } else if (req.operation == CONCURRENT_MAP_BACKUP_REMOVE_MULTI) {
-            final Record record = getRecord(req);
+            Record record = getRecord(req);
             if (record != null) {
                 if (req.value == null || record.valueCount() == 0) {
                     markAsEvicted(record);
@@ -1137,7 +1144,6 @@ public class CMap {
                 }
             }
         }
-//        System.out.println(thisAddress + "  >> " + ownedEntryCount + "  backup: " + backupEntryCount + "   map.size " + mapRecords.size());
         localMapStats.setDirtyEntryCount(zeroOrPositive(dirtyCount));
         localMapStats.setMarkedAsRemovedEntryCount(zeroOrPositive(markedAsRemovedEntryCount));
         localMapStats.setMarkedAsRemovedMemoryCost(zeroOrPositive(markedAsRemovedMemoryCost));
@@ -1344,7 +1350,8 @@ public class CMap {
                     boolean ownedOrBackup = partition.isOwnerOrBackup(thisAddress, backupCount);
                     if (owner != null && !partitionManager.isPartitionMigrating(partition.getPartitionId())) {
                         if (owned) {
-                            if (store != null && writeDelayMillis > 0 && record.isDirty()) {
+                            if (store != null && mapStoreWrapper.isEnabled()
+                                    && writeDelayMillis > 0 && record.isDirty()) {
                                 if (now > record.getWriteTime()) {
                                     recordsDirty.add(record);
                                     record.setDirty(false); // set dirty to false, we will store these soon

@@ -39,8 +39,9 @@ public final class DefaultRecord extends AbstractRecord {
             recordCopy.setIndexes(getOptionalInfo().indexes, getOptionalInfo().indexTypes);
             recordCopy.setMultiValues(getOptionalInfo().lsMultiValues);
         }
-        if (lock != null) {
-            recordCopy.setLock(new DistributedLock(lock));
+        final DistributedLock dl = lock;
+        if (dl != null) {
+            recordCopy.setLock(new DistributedLock(dl));
         }
         recordCopy.setVersion(getVersion());
         return recordCopy;
@@ -78,8 +79,11 @@ public final class DefaultRecord extends AbstractRecord {
     }
 
     public void setValueData(Data value) {
-        invalidateValueCache();
         this.value = value;
+        // invalidation should be called after value is set!
+        // otherwise a call to getValue() from another thread
+        // may cause stale data to be read when cacheValue is true.
+        invalidateValueCache();
     }
 
     public int valueCount() {
@@ -117,7 +121,7 @@ public final class DefaultRecord extends AbstractRecord {
     }
 
     public void invalidate() {
-        invalidateValueCache();
         value = null;
+        invalidateValueCache();
     }
 }
