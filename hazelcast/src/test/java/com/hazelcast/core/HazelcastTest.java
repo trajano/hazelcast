@@ -18,6 +18,7 @@ package com.hazelcast.core;
 
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MultiMapConfig;
+import com.hazelcast.config.NearCacheConfig;
 import com.hazelcast.impl.GroupProperties;
 import org.junit.*;
 import org.junit.runner.RunWith;
@@ -1271,4 +1272,18 @@ public class HazelcastTest {
             ex.awaitTermination(2, TimeUnit.SECONDS);
         }
     }
+
+    @Test
+       public void testIssue174NearCacheContainsKeySingleNode() {
+           Config config = new Config();
+           config.getGroupConfig().setName("testIssue174NearCacheContainsKeySingleNode");
+           NearCacheConfig nearCacheConfig = new NearCacheConfig();
+           config.getMapConfig("default").setNearCacheConfig(nearCacheConfig);
+           HazelcastInstance h = Hazelcast.newHazelcastInstance(config);
+           IMap<String,String> map = h.getMap("testIssue174NearCacheContainsKeySingleNode");
+           map.put("key","value");
+           assertTrue(map.containsKey("key"));
+           h.getLifecycleService().shutdown();
+       }
+
 }
