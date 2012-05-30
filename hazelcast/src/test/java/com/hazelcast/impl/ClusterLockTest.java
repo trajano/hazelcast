@@ -370,6 +370,7 @@ public class ClusterLockTest {
                         count.incrementAndGet();
                     } catch (Exception e) {
                         error.set(e);
+                        e.printStackTrace();
                         break;
                     }
                 }
