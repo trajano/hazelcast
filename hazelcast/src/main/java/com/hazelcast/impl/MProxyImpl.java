@@ -109,9 +109,6 @@ public class MProxyImpl extends FactoryAwareNamedProxy implements MProxy, DataSe
         try {
             return mproxyReal.get(key);
         } catch (Throwable e) {
-            if (factory.restarted) {
-                return get(key);
-            }
             Util.throwUncheckedException(e);
             return null;
         } finally {
@@ -171,9 +168,6 @@ public class MProxyImpl extends FactoryAwareNamedProxy implements MProxy, DataSe
         try {
             return mproxyReal.put(key, value, ttl, timeunit);
         } catch (Throwable e) {
-            if (factory.restarted) {
-                return put(key, value, ttl, timeunit);
-            }
             Util.throwUncheckedException(e);
             return null;
         } finally {
@@ -186,9 +180,6 @@ public class MProxyImpl extends FactoryAwareNamedProxy implements MProxy, DataSe
         try {
             return mproxyReal.remove(key);
         } catch (Throwable e) {
-            if (factory.restarted) {
-                return remove(key);
-            }
             Util.throwUncheckedException(e);
             return null;
         } finally {

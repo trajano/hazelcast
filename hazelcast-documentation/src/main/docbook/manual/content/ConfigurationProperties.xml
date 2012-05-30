@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ Copyright (c) 2008-2012, Hazel Bilisim Ltd. All Rights Reserved.
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~ http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License.
+  -->
+
 <sect1 xml:id="ConfigurationProperties" version="5.0"
        xmlns="http://docbook.org/ns/docbook" xmlns:xlink="http://www.w3.org/1999/xlink"
        xmlns:db="http://docbook.org/ns/docbook">
@@ -468,6 +484,55 @@ cfg.setProperty("hazelcast.property.foo", "value");
                 <td>Management Center maximum visible instance count</td>
                 <td>integer</td>
                 <td>100</td>
+            </tr>
+            <tr>
+                <td>
+                    <db:literal>hazelcast.connection.monitor.interval</db:literal>
+                </td>
+                <td>Minimum interval to consider a connection error as critical in milliseconds.</td>
+                <td>integer</td>
+                <td>100</td>
+            </tr>
+            <tr>
+                <td>
+                    <db:literal>hazelcast.connection.monitor.max.faults</db:literal>
+                </td>
+                <td>Maximum IO error count before disconnecting from a node.</td>
+                <td>integer</td>
+                <td>3</td>
+            </tr>
+            <tr>
+                <td>
+                    <db:literal>hazelcast.partition.migration.interval</db:literal>
+                </td>
+                <td>Interval to run partition migration tasks in seconds.</td>
+                <td>integer</td>
+                <td>10</td>
+            </tr>
+            <tr>
+                <td>
+                    <db:literal>hazelcast.immediate.backup.interval</db:literal>
+                </td>
+                <td>Interval to run immediate backup tasks in seconds.</td>
+                <td>integer</td>
+                <td>0</td>
+            </tr>
+            <tr>
+                <td>
+                    <db:literal>hazelcast.graceful.shutdown.max.wait</db:literal>
+                </td>
+                <td>Maximum wait seconds during graceful shutdown.</td>
+                <td>integer</td>
+                <td>600</td>
+            </tr>
+            <tr>
+                <td>
+                    <db:literal>hazelcast.force.throw.interrupted.exception</db:literal>
+                </td>
+                <td>Force throw of RuntimeInterruptedException when a thread is interrupted, otherwise a
+                    warning log will be printed.</td>
+                <td>boolean</td>
+                <td>false</td>
             </tr>
             <tr>
                 <td>
