@@ -73,6 +73,18 @@ public final class ThreadContext {
         mapContexts.clear();
     }
 
+    public static synchronized void shutdown(Thread thread) {
+        ThreadContext threadContext = mapContexts.remove(thread);
+        if (threadContext != null) {
+            threadContext.shutdown();
+        }
+    }
+
+    public void shutdown() {
+        currentFactory = null;
+        mapHazelcastInstanceContexts.clear();
+    }
+
     public void finalizeTxn() {
         getCallContext().finalizeTransaction();
     }
