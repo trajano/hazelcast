@@ -71,13 +71,8 @@ public class ExecutorManager extends BaseManager {
         GroupProperties gp = node.groupProperties;
         ClassLoader classLoader = node.getConfig().getClassLoader();
         threadPoolExecutor = new ThreadPoolExecutor(
-<<<<<<< HEAD
-                0, Integer.MAX_VALUE,
-                60L,
-=======
                 5, Integer.MAX_VALUE,
-                6L,
->>>>>>> 852e875... ThreadContext memory leak fix.
+                60L,
                 TimeUnit.SECONDS,
                 new SynchronousQueue(),
                 new ExecutorThreadFactory(node.threadGroup, node.getThreadPoolNamePrefix("cached"), classLoader),
@@ -86,7 +81,7 @@ public class ExecutorManager extends BaseManager {
                 threadPoolBeforeExecute(t, r);
             }
         };
-        esScheduled = new ScheduledThreadPoolExecutor(5, new ExecutorThreadFactory(node.threadGroup,
+        esScheduled = new ScheduledThreadPoolExecutor(2, new ExecutorThreadFactory(node.threadGroup,
                 node.getThreadPoolNamePrefix("scheduled"), classLoader), new RejectionHandler()) {
             protected void beforeExecute(Thread t, Runnable r) {
                 threadPoolBeforeExecute(t, r);
