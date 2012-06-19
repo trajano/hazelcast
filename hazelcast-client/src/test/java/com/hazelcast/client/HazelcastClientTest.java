@@ -16,10 +16,12 @@
 
 package com.hazelcast.client;
 
+import com.hazelcast.config.Config;
 import com.hazelcast.core.*;
 import com.hazelcast.core.InstanceEvent.InstanceEventType;
 import com.hazelcast.partition.Partition;
 import com.hazelcast.partition.PartitionService;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -31,6 +33,7 @@ import java.math.BigInteger;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static junit.framework.Assert.assertFalse;
 import static org.junit.Assert.*;
@@ -784,4 +787,58 @@ public class HazelcastClientTest extends HazelcastClientTestBase {
             assertTrue(set.add(partition.getPartitionId()));
         }
     }
+
+    /* github issue #183 */
+    @Test
+    public void testKeyBasedListeners() throws InterruptedException {
+        try {
+            Config config = new Config();
+            HazelcastInstance instance = Hazelcast.newHazelcastInstance(config);
+            IMap<String, String> map = instance.getMap("map");
+            map.put("key1", "value1");
+            map.put("key2", "value2");
+            map.put("key3", "value3");
+
+            ClientConfig clientConfig = new ClientConfig();
+            HazelcastInstance client = HazelcastClient.newHazelcastClient(clientConfig);
+
+            final AtomicInteger count = new AtomicInteger(0);
+            IMap<String, String> clientMap = client.getMap("map");
+
+            clientMap.addEntryListener(new EntryListener<String, String>() {
+                public void entryAdded(EntryEvent<String, String> entryEvent) {
+                    count.incrementAndGet();
+                }
+                public void entryRemoved(EntryEvent<String, String> entryEvent) {
+                }
+                public void entryUpdated(EntryEvent<String, String> entryEvent) {
+                    count.incrementAndGet();
+                }
+                public void entryEvicted(EntryEvent<String, String> entryEvent) {
+                }
+            },"key1" , true);
+
+            clientMap.addEntryListener(new EntryListener<String, String>() {
+                public void entryAdded(EntryEvent<String, String> entryEvent) {
+                    count.incrementAndGet();
+                }
+                public void entryRemoved(EntryEvent<String, String> entryEvent) {
+                }
+                public void entryUpdated(EntryEvent<String, String> entryEvent) {
+                    System.out.println("event map");
+                    count.incrementAndGet();
+                }
+                public void entryEvicted(EntryEvent<String, String> entryEvent) {
+                }
+            },"key2" , true);
+
+            map.put("key1", "new-value1");
+            Thread.sleep(100);
+            Assert.assertEquals(count.get(), 1);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+    }
+
 }
