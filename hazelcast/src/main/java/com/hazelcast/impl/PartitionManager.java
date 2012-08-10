@@ -721,7 +721,7 @@ public class PartitionManager {
     private class SendClusterStateTask implements Runnable {
         public void run() {
             if (concurrentMapManager.isMaster() && concurrentMapManager.node.isActive()) {
-                if (!scheduledTasksQueue.isEmpty() || !immediateTasksQueue.isEmpty()) {
+                if ((!scheduledTasksQueue.isEmpty() || !immediateTasksQueue.isEmpty()) && migrationActive.get()) {
                     logger.log(Level.INFO, "Remaining migration tasks in queue => Immediate-Tasks: " + immediateTasksQueue.size()
                             + ", Scheduled-Tasks: " + scheduledTasksQueue.size());
                 }
@@ -900,7 +900,7 @@ public class PartitionManager {
                 }
                 if (migrationRequestTask.getToAddress() == null) {
                     // A member is dead, this replica should not have an owner!
-                    logger.log(Level.INFO, "Fixing partition, " + migrationRequestTask.getReplicaIndex()
+                    logger.log(Level.FINEST, "Fixing partition, " + migrationRequestTask.getReplicaIndex()
                             + ". replica of partition[" + migrationRequestTask.getPartitionId() + "] should be removed.");
                     concurrentMapManager.enqueueAndWait(new Processable() {
                         public void process() {
