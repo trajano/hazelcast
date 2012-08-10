@@ -548,6 +548,9 @@ public class PartitionManager {
     }
 
     public void setClusterRuntimeState(ClusterRuntimeState clusterRuntimeState) {
+        if (!concurrentMapManager.isActive() || !concurrentMapManager.node.joined()) {
+            return;
+        }
         concurrentMapManager.checkServiceThread();
         final Connection conn = clusterRuntimeState.getConnection();
         final Address sender = conn != null ? conn.getEndPoint() : null;
@@ -557,7 +560,7 @@ public class PartitionManager {
             return;
         } else {
             final Address master = concurrentMapManager.getMasterAddress();
-            if (sender == null || master == null || !master.equals(sender)) {
+            if (sender == null || !sender.equals(master)) {
                 logger.log(Level.WARNING, "Received a ClusterRuntimeState, but its sender doesn't seem master!" +
                         " => Sender: " + sender + ", Master: " + master + "! " +
                         "(Ignore if master node has changed recently.)");

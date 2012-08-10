@@ -475,7 +475,6 @@ public final class ClusterManager extends BaseManager implements ConnectionListe
                     logger.log(Level.FINEST, message);
                     return;
                 }
-
                 // If this node is master then remove old member and process join request.
                 // If requesting address is equal to master node's address, that means master node
                 // somehow disconnected and wants to join back.
@@ -485,9 +484,9 @@ public final class ClusterManager extends BaseManager implements ConnectionListe
                                               + " Removing old member and processing join request...");
                     // If existing connection of endpoint is different from current connection
                     // destroy it, otherwise keep it.
-                    final Connection existingConnection = node.connectionManager.getConnection(joinRequest.address);
-                    final boolean destroyExistingConnection = existingConnection != conn;
-                    doRemoveAddress(member.getAddress(), destroyExistingConnection);
+//                    final Connection existingConnection = node.connectionManager.getConnection(joinRequest.address);
+//                    final boolean destroyExistingConnection = existingConnection != conn;
+                    doRemoveAddress(member.getAddress(), false);
                 }
             }
             if (!node.getConfig().getNetworkConfig().getJoin().getMulticastConfig().isEnabled()) {
