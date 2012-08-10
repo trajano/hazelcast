@@ -449,6 +449,7 @@ public class Node {
 
     public void onRestart() {
         joined.set(false);
+        joiner.reset();
         final String uuid = UUID.randomUUID().toString();
         logger.log(Level.FINEST, "Generated new UUID for local member: " + uuid);
         localMember.setUuid(uuid);
@@ -571,7 +572,7 @@ public class Node {
                 logger.log(Level.WARNING, e.getMessage());
                 rejoin();
             } else {
-                logger.log(Level.SEVERE, e.getMessage(), e);
+                logger.log(Level.SEVERE, "Could not join cluster, shutting down!", e);
                 shutdown(false, true);
             }
         }

@@ -25,4 +25,6 @@ public interface Joiner {
     public void searchForOtherClusters(SplitBrainHandler splitBrainHandler);
 
     long getStartTime();
+
+    void reset();
 }

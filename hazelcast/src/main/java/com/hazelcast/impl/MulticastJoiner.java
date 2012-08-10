@@ -31,12 +31,12 @@ import java.util.logging.Level;
 
 public class MulticastJoiner extends AbstractJoiner {
 
-    final AtomicInteger currentTryCount = new AtomicInteger(0);
-    final AtomicInteger tryCount;
+    private final AtomicInteger currentTryCount = new AtomicInteger(0);
+    private final AtomicInteger maxTryCount;
 
     public MulticastJoiner(Node node) {
         super(node);
-        tryCount = new AtomicInteger(calculateTryCount());
+        maxTryCount = new AtomicInteger(calculateTryCount());
     }
 
     public void doJoin(AtomicBoolean joined) {
@@ -114,7 +114,7 @@ public class MulticastJoiner extends AbstractJoiner {
                 }
                 if (shouldMerge(joinInfo)) {
                     logger.log(Level.WARNING, node.address + " is merging [multicast] to " + joinInfo.address);
-                    node.factory.restart();
+                    splitBrainHandler.restart();
                     return;
                 }
             }
@@ -148,7 +148,7 @@ public class MulticastJoiner extends AbstractJoiner {
             final String ip = System.getProperty("join.ip");
             if (ip == null) {
                 JoinInfo joinInfo = node.createJoinInfo();
-                for (; node.isActive() && currentTryCount.incrementAndGet() <= tryCount.get(); ) {
+                for (; node.isActive() && currentTryCount.incrementAndGet() <= maxTryCount.get(); ) {
                     joinInfo.setTryCount(currentTryCount.get());
                     node.multicastService.send(joinInfo);
                     if (node.getMasterAddress() == null) {
@@ -190,7 +190,7 @@ public class MulticastJoiner extends AbstractJoiner {
     public void onReceivedJoinInfo(JoinInfo joinInfo) {
         if (joinInfo.getTryCount() > this.currentTryCount.get() + 20) {
             int timeoutSeconds = (config.getNetworkConfig().getJoin().getMulticastConfig().getMulticastTimeoutSeconds() + 4) * 100;
-            this.tryCount.set(timeoutSeconds);
+            this.maxTryCount.set(timeoutSeconds);
         }
     }
 }
