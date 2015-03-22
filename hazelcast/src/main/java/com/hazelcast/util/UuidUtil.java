@@ -18,9 +18,8 @@ package com.hazelcast.util;
 
 import com.hazelcast.nio.Address;
 
-import java.security.SecureRandom;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Util class to generate random unique identifiers
@@ -44,8 +43,8 @@ public final class UuidUtil {
 
     public static UUID buildRandomUUID() {
         //CHECKSTYLE:OFF  suppressed because of magic numbers
-        byte[] data = new byte[16];
-        new SecureRandom().nextBytes(data);
+        final byte[] data = new byte[16];
+        ThreadLocalRandom.current().nextBytes(data);
         /* clear version        */
         data[6] &= 0x0f;
         /* set to version 4     */
